@@ -6,6 +6,10 @@ float waterLevel = -30;  // The height at which water will appear (valleys)
 float dirtDepth = -120;  // The depth of the dirt wall below the grass
 float rockLevel = 30;  // The height above which terrain becomes rocky (grey)
 float forwardShift;
+int numTrees = 100;  // Number of trees to randomly place on the terrain
+
+// Array to hold tree positions
+PVector[] treePositions;
 
 float[][] terrain;  // Array to hold terrain height values
 
@@ -15,6 +19,7 @@ void setup() {
     cols = w / scale;
     rows = h / scale;
     terrain = new float[cols][rows];
+    treePositions = new PVector[numTrees];  // Array to hold tree positions
     forwardShift = -0;
 
     // Generate Perlin noise for each point in the grid once
@@ -26,6 +31,22 @@ void setup() {
             xoff += 0.1;
         }
         yoff += 0.1;
+    }
+
+    // Generate tree positions only once in setup
+    for (int i = 0; i < numTrees; i++) {
+        int tx, ty;
+        float height;
+
+        // Keep generating random positions until a valid grassy position is found
+        do {
+            tx = int(random(cols));  // Random x-coordinate for tree
+            ty = int(random(rows));  // Random y-coordinate for tree
+            height = terrain[tx][ty];
+        } while (height <= waterLevel || height >= rockLevel);
+
+        // Save the tree's position in the array
+        treePositions[i] = new PVector(tx * scale, ty * scale, height);
     }
 }
 
@@ -105,4 +126,54 @@ void draw() {
         }
         endShape();
     }
+
+    // **Fourth pass: Draw trees using precomputed positions**
+    for (int i = 0; i < numTrees; i++) {
+        PVector treePos = treePositions[i];
+        drawTree(treePos.x, treePos.y, treePos.z);
+    }
+}
+
+// Function to draw a simple tree (cylinder trunk, cone foliage)
+void drawTree(float x, float y, float z) {
+    pushMatrix();
+    translate(x, y, z);  // Position the tree on the terrain
+
+    // Draw the trunk
+    fill(139, 69, 19);  // Brown color for the trunk
+    cylinder(2, 20);  // Trunk radius and height
+
+    // Draw the foliage (a green cone)
+    translate(0, 0, 20);  // Move to the top of the trunk
+    fill(34, 139, 34);  // Green color for foliage
+    cone(10, 25);  // Foliage radius and height
+
+    popMatrix();
+}
+
+// Function to draw a cylinder (for the tree trunk)
+void cylinder(float r, float h) {
+    beginShape(QUAD_STRIP);
+    for (int i = 0; i <= 360; i += 5) {
+        float rad = radians(i);
+        float x = cos(rad) * r;
+        float y = sin(rad) * r;
+        vertex(x, y, 0);
+        vertex(x, y, h);
+    }
+    endShape();
+}
+
+// Function to draw a cone (for the tree foliage)
+void cone(float r, float h) {
+    // Draw the base of the cone
+    beginShape(TRIANGLE_FAN);
+    vertex(0, 0, h);  // Cone tip
+    for (int i = 0; i <= 360; i += 5) {
+        float rad = radians(i);
+        float x = cos(rad) * r;
+        float y = sin(rad) * r;
+        vertex(x, y, 0);
+    }
+    endShape();
 }
