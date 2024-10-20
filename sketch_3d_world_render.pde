@@ -3,6 +3,8 @@ int scale = 10;  // Size of each grid square
 int w = 1400;  // Width of the plane
 int h = 1000;  // Height of the plane
 float waterLevel = -30;  // The height at which water will appear (valleys)
+float dirtDepth = -120;  // The depth of the dirt wall below the grass
+float forwardShift;
 
 float[][] terrain;  // Array to hold terrain height values
 
@@ -12,6 +14,7 @@ void setup() {
     cols = w / scale;
     rows = h / scale;
     terrain = new float[cols][rows];
+    forwardShift = -0;
 
     // Generate Perlin noise for each point in the grid once
     float yoff = 0;
@@ -39,7 +42,7 @@ void draw() {
     fill(34, 139, 34);  // A green color to simulate grass
     stroke(50, 205, 50);  // Light green edges for the terrain
 
-    for (int y = 0; y < rows - 1; y++) {
+    for (int y = 0; y < rows - 2; y++) {
         beginShape(QUAD_STRIP);
         for (int x = 0; x < cols; x++) {
             vertex(x * scale, y * scale, terrain[x][y]);
@@ -48,7 +51,25 @@ void draw() {
         endShape();
     }
 
-    // **Second pass: Draw the water**
+    // **Second pass: Draw the dirt walls below the terrain**
+    fill(66, 40, 14);  // Brown color for dirt walls
+    noStroke();  // No edges for the dirt walls to make it smooth
+
+    for (int y = 0; y < rows - 1; y++) {
+        beginShape(QUADS);
+        for (int x = 0; x < cols - 1; x++) {
+
+            // Draw vertical dirt walls from the terrain down to the dirtDepth
+            vertex(x * scale , y * scale - forwardShift, terrain[x][y]);  // Grass point
+            vertex((x + 1) * scale, y * scale - forwardShift, terrain[x + 1][y]);  // Grass point
+
+            vertex((x + 1) * scale, y * scale - forwardShift, dirtDepth);  // Dirt wall base
+            vertex(x * scale, y * scale - forwardShift, dirtDepth);  // Dirt wall base
+        }
+        endShape();
+    }
+
+    // **Third pass: Draw the water**
     fill(0, 0, 255, 150);  // Semi-transparent blue for water
     noStroke();  // No edges for water to make it smooth
 
@@ -57,8 +78,8 @@ void draw() {
         for (int x = 0; x < cols; x++) {
             if (terrain[x][y] < waterLevel || terrain[x][y + 1] < waterLevel) {
                 // Draw water at water level
-                vertex(x * scale, y * scale, waterLevel);
-                vertex(x * scale, (y + 1) * scale, waterLevel);
+                vertex(x * scale, (y-1) * scale, waterLevel);
+                vertex(x * scale, (y) * scale, waterLevel);
             }
         }
         endShape();
