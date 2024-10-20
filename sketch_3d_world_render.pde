@@ -11,14 +11,17 @@ float speed = 0;   // Speed based on mouse distance from center
 float maxSpeed = 100;  // Maximum movement speed
 
 void setup() {
-    size(1280, 720, P3D);
+    fullScreen(P3D);
+    noCursor();
+    //size(1280, 720, P3D);
     cols = w / scale;
     rows = h / scale;
     terrain = new float[cols][rows];
     posX = 0;
     posY = 0;
-    centerX = width / 2;  // Center of the screen
-    centerY = height / 2;
+    centerX = displayWidth / 4;  // Center of the screen
+    centerY = displayHeight / 4;
+    textSize(16);  // Set the text size for speed display
 }
 
 void draw() {
@@ -64,4 +67,16 @@ void draw() {
         endShape();
     }
 
+    // Reset transformations to draw 2D elements
+    //resetMatrix();
+
+    // Draw the arrow from the center of the screen to the mouse
+    stroke(255, 0, 0);  // Red color for the arrow
+    line(centerX, centerY, mouseX, mouseY);  // Draw the arrow
+
+    // Draw the speed next to the arrow in the middle
+    float midX = (centerX + mouseX) / 2;
+    float midY = (centerY + mouseY) / 2;
+    fill(255);  // White color for the text
+    text("Speed: " + int(speed), midX + 10, midY);  // Display speed
 }
