@@ -4,6 +4,8 @@ int w = 1400;  // Width of the plane
 int h = 1000;  // Height of the plane
 float waterLevel = -30;  // The height at which water will appear (valleys)
 float dirtDepth = -120;  // The depth of the dirt wall below the grass
+float snowLevel = 35;  // The height above which snow appears
+float snowThickness = 10;  // Thickness of the snow layer
 float forwardShift;
 
 float[][] terrain;  // Array to hold terrain height values
@@ -69,7 +71,40 @@ void draw() {
         endShape();
     }
 
-    // **Third pass: Draw the water**
+    // **Third pass: Draw the snow layer on top of high mountains**
+    fill(255, 255, 255);  // White color for snow
+    noStroke();  // No edges for snow to keep it smooth
+
+    for (int y = 0; y < rows - 1; y++) {
+        boolean drawingSnow = false;  // Track whether we are drawing a snow shape
+
+        for (int x = 0; x < cols; x++) {
+            // Check if terrain height is above the snow level
+            if (terrain[x][y] > snowLevel || terrain[x][y + 1] > snowLevel) {
+                if (!drawingSnow) {
+                    beginShape(QUAD_STRIP);  // Start new snow strip
+                    drawingSnow = true;
+                }
+
+                // Draw snow layer slightly above the terrain
+                vertex(x * scale, y * scale, terrain[x][y] + snowThickness);
+                vertex(x * scale, (y + 1) * scale, terrain[x][y + 1] + snowThickness);
+            } else {
+                // If the terrain drops below the snow level, end the shape to avoid connecting to the next snow region
+                if (drawingSnow) {
+                    endShape();
+                    drawingSnow = false;
+                }
+            }
+        }
+
+        // Ensure the shape ends if we finished the row while still drawing snow
+        if (drawingSnow) {
+            endShape();
+        }
+    }
+
+    // **Fourth pass: Draw the water**
     fill(0, 0, 255, 150);  // Semi-transparent blue for water
     noStroke();  // No edges for water to make it smooth
 
@@ -78,7 +113,7 @@ void draw() {
         for (int x = 0; x < cols; x++) {
             if (terrain[x][y] < waterLevel || terrain[x][y + 1] < waterLevel) {
                 // Draw water at water level
-                vertex(x * scale, (y-1) * scale, waterLevel);
+                vertex(x * scale, (y - 1) * scale, waterLevel);
                 vertex(x * scale, (y) * scale, waterLevel);
             }
         }
