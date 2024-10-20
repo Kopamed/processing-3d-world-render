@@ -4,8 +4,9 @@ int w = 1400;  // Width of the plane
 int h = 1000;  // Height of the plane
 float waterLevel = -30;  // The height at which water will appear (valleys)
 float dirtDepth = -120;  // The depth of the dirt wall below the grass
-float snowLevel = 35;  // The height above which snow appears
-float snowThickness = 10;  // Thickness of the snow layer
+float snowLevel = 70;  // The height above which snow appears
+float rockLevel = 35;  // The height above which terrain becomes rocky (grey)
+float snowThickness = 5;  // Thickness of the snow layer
 float forwardShift;
 
 float[][] terrain;  // Array to hold terrain height values
@@ -40,15 +41,41 @@ void draw() {
     rotateX(PI / 3);
     translate(-w / 2, -h / 2);
 
-    // **First pass: Draw the terrain**
-    fill(34, 139, 34);  // A green color to simulate grass
+    // **First pass: Draw the terrain with varying colors**
     stroke(50, 205, 50);  // Light green edges for the terrain
 
-    for (int y = 0; y < rows - 2; y++) {
+    for (int y = 0; y < rows - 1; y++) {
         beginShape(QUAD_STRIP);
         for (int x = 0; x < cols; x++) {
-            vertex(x * scale, y * scale, terrain[x][y]);
-            vertex(x * scale, (y + 1) * scale, terrain[x][y + 1]);
+            // Determine the color of the terrain based on its height
+            float height1 = terrain[x][y];
+            float height2 = terrain[x][y + 1];
+
+            // Apply colors based on terrain height:
+            if (height1 > snowLevel) {
+                // Snow at the highest peaks
+                fill(255, 255, 255);  // White for snow
+            } else if (height1 > rockLevel) {
+                // Grey for rocky terrain between grass and snow
+                fill(169, 169, 169);  // Grey color for rocks
+            } else {
+                // Green for grass at lower elevations
+                fill(34, 139, 34);  // Green for grass
+            }
+
+            // Draw first vertex
+            vertex(x * scale, y * scale, height1);
+
+            if (height2 > snowLevel) {
+                fill(255, 255, 255);  // Snow
+            } else if (height2 > rockLevel) {
+                fill(169, 169, 169);  // Grey rock
+            } else {
+                fill(34, 139, 34);  // Green grass
+            }
+
+            // Draw second vertex
+            vertex(x * scale, (y + 1) * scale, height2);
         }
         endShape();
     }
@@ -60,7 +87,6 @@ void draw() {
     for (int y = 0; y < rows - 1; y++) {
         beginShape(QUADS);
         for (int x = 0; x < cols - 1; x++) {
-
             // Draw vertical dirt walls from the terrain down to the dirtDepth
             vertex(x * scale , y * scale - forwardShift, terrain[x][y]);  // Grass point
             vertex((x + 1) * scale, y * scale - forwardShift, terrain[x + 1][y]);  // Grass point
