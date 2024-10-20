@@ -2,6 +2,7 @@ int cols, rows;
 int scale = 10;  // Size of each grid square
 int w = 1400;  // Width of the plane
 int h = 1000;  // Height of the plane
+float waterLevel = -30;  // The height at which water will appear (valleys)
 
 float[][] terrain;  // Array to hold terrain height values
 
@@ -29,23 +30,36 @@ void draw() {
     lights();  // Add lighting for depth
     directionalLight(255, 255, 255, 0, -1, -1);  // A white light shining from the top
 
-    // Green color for the terrain
+    // Set the camera and adjust the view
+    translate(width / 2, height / 2 + 100);
+    rotateX(PI / 3);
+    translate(-w / 2, -h / 2);
+
+    // **First pass: Draw the terrain**
     fill(34, 139, 34);  // A green color to simulate grass
     stroke(50, 205, 50);  // Light green edges for the terrain
 
-    // Set the camera and adjust the view
-    translate(width / 2, height / 2 + 50);
-    rotateX(PI / 4);
-    translate(-w / 2, -h / 2);
-
-    // Draw the smooth terrain using quad strips
     for (int y = 0; y < rows - 1; y++) {
         beginShape(QUAD_STRIP);
         for (int x = 0; x < cols; x++) {
-            // First vertex
             vertex(x * scale, y * scale, terrain[x][y]);
-            // Vertex below it
             vertex(x * scale, (y + 1) * scale, terrain[x][y + 1]);
+        }
+        endShape();
+    }
+
+    // **Second pass: Draw the water**
+    fill(0, 0, 255, 150);  // Semi-transparent blue for water
+    noStroke();  // No edges for water to make it smooth
+
+    for (int y = 0; y < rows - 1; y++) {
+        beginShape(QUAD_STRIP);
+        for (int x = 0; x < cols; x++) {
+            if (terrain[x][y] < waterLevel || terrain[x][y + 1] < waterLevel) {
+                // Draw water at water level
+                vertex(x * scale, y * scale, waterLevel);
+                vertex(x * scale, (y + 1) * scale, waterLevel);
+            }
         }
         endShape();
     }
