@@ -1,20 +1,5 @@
 import java.util.ArrayList;
 
-/*
-// General configuration
-int cols, rows;
-int scale = 20;
-int planeSize = 10000;
-
-// World configuration
-float waterLevel = 32;
-float dirtDepth = -20;
-float rockLevel = 80;
-
-// Misc configuration
-int nTrees = 200;
-int nClouds = 10;
-*/
 
 // ===========  Misc functions ===========
 void cylinder(float r, float h) {
@@ -350,8 +335,8 @@ public class World {
 // ===========  Helper functions ===========
 void populateWithTrees(World world) {
     float treeThreshold = 0.5;
-    float densityScale = 0.005;
-    float acceptanceChance = 0.03;
+    float densityScale = 0.008;
+    float acceptanceChance = 0.04;
     WorldConfiguration worldConfiguration = world.getWorldConfiguration();
     float scale = world.getScale();
     float terrainSize = world.getTerrainSize(); 
@@ -370,6 +355,7 @@ void populateWithTrees(World world) {
                     continue;
                 }
 
+                // I suck at graphics ffs
                 float adjustedX = x * scale - terrainSize / 2;
                 float adjustedZ = z * scale - terrainSize / 2;
 
@@ -386,6 +372,40 @@ void populateWithTrees(World world) {
     }
 }
 
+void populateWithClouds(World world) {
+    float cloudThreshold = 0.65;  
+    float densityScale = 0.001;
+    float acceptanceChance = 0.5;
+    WorldConfiguration worldConfiguration = world.getWorldConfiguration();
+    float scale = world.getScale();
+    float terrainSize = world.getTerrainSize(); 
+
+    for (int z = 0; z < world.terrain.length; z += 100) {  
+        for (int x = 0; x < world.terrain[z].length; x += 100) {
+            float noiseValue = noise(x * densityScale, z * densityScale);
+            
+            if (noiseValue > cloudThreshold) {  
+
+                if (random(1) < 1 - acceptanceChance) {
+                    continue;
+                }
+
+                float adjustedX = x * scale - terrainSize / 2;
+                float adjustedZ = z * scale - terrainSize / 2;
+
+                world.addObject(new Cloud(
+                    new PVector(adjustedX, random(-1500, -1200), adjustedZ),  
+                    20,  // Number of spheres in the cloud
+                    300, // Cloud width
+                    150, // Cloud height
+                    300, // Cloud length
+                    world.getColorScheme()
+                ));
+            }
+        }
+    }
+}
+
 
 // ===========  Pre-setup ===========
 World world;
@@ -394,20 +414,18 @@ World world;
 // ===========  Processing Functions ===========
 void setup() {
     fullScreen(P3D);
+    noiseSeed(42);
 
-    camera(0, -1900, 1800, 
+    float d = 3000;
+    camera(-d, -d, d, 
         0, 0, 0,   
         0, 1, 0);
-
-    /*camera(0, -5000, 5000, 
-        0, 0, 0,   
-        0, 1, 0);  */
 
     ColorScheme defaultColorScheme = new DefaultColorScheme();
 
     world = new World(2500, 0.0035f, 1.5f, new DefaultWorldConfiguration(), defaultColorScheme);
     populateWithTrees(world);
-    world.addObject(new Cloud(new PVector(0, -2000, 0), 500, 500, 150, 500, defaultColorScheme));
+    populateWithClouds(world);
 }
 
 
