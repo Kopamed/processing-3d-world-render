@@ -7,7 +7,7 @@ mkdir sketch_folder
 cp sketch_3d_world_render.pde sketch_folder/sketch_folder.pde
 
 # Run the processing-java command
-processing-java --sketch=$(pwd)/sketch_folder --output=$(pwd)/output --force --run
+processing-java --sketch=$(pwd)/sketch_folder --output=$(pwd)/output --force --run || true
 
 # Get the current date and time in a safe format for file names
 datetime=$(date +"%Y-%m-%d_%H-%M-%S")
