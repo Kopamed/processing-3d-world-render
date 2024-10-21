@@ -347,8 +347,6 @@ void draw() {
 
     lights();
     directionalLight(255, 255, 255, 0, -1, -1);
-    //ambientLight(110, 110, 110); 
-
 
     world.drawAll();
 
