@@ -68,7 +68,7 @@ public class DefaultWorldConfiguration implements WorldConfiguration {
 
     @Override
     public float getRockLevel() {
-        return 800;
+        return 600;
     }
 }
 
@@ -200,14 +200,14 @@ public class World {
                 } else {
                     fill(this.colorScheme.getGrassColor()); 
                 }
-                vertex(x * scale, height1, z * scale);
+                vertex(x * scale, -height1, z * scale);
 
                 if (height2 > this.worldConfiguration.getRockLevel()) {
                     fill(this.colorScheme.getRockColor());
                 } else {
                     fill(this.colorScheme.getGrassColor()); 
                 }
-                vertex(x * scale, height2, (z + 1) * scale);
+                vertex(x * scale, -height2, (z + 1) * scale);
             }
             endShape();
         }
