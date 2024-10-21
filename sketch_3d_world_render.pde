@@ -85,11 +85,6 @@ public class DefaultColorScheme implements ColorScheme {
     public color getCloudColor() {
         return color(255, 255, 255);
     }
-
-    if (frameCount == 1) {
-        save("output/output.tif");
-        exit();  // Automatically close after saving the file
-    }
 }
 
 
