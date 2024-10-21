@@ -3,7 +3,7 @@ name: Generate 3D World TIFF
 on:
   push:
     branches:
-      - main  # Trigger workflow on pushes to the main branch
+      - main
   workflow_dispatch:  # Allow manual triggers from GitHub Actions UI
 
 jobs:
@@ -31,7 +31,11 @@ jobs:
       run: |
         processing-java --sketch=$PWD/sketch_folder --output=$PWD/output --force --run
 
+    - name: List output directory
+      run: ls -al $PWD/output  # List the contents of the output directory to verify
+
     - name: Upload generated TIFF
+      if: success()  # Only upload if previous steps were successful
       uses: actions/upload-artifact@v4
       with:
         name: output-tif
