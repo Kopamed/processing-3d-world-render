@@ -7,10 +7,12 @@ float dirtDepth = -120;  // The depth of the dirt wall below the grass
 float rockLevel = 60;  // The height above which terrain becomes rocky (grey), raised for bigger mountains
 float forwardShift;
 int numTrees = 200;  // Number of trees to randomly place on the terrain (increased tree count)
+int numClouds = 10;  // Number of clouds to generate
 
-// Arrays to hold tree positions and colors
+// Arrays to hold tree and cloud positions/colors
 PVector[] treePositions;
 color[] treeColors;
+Cloud[] clouds;  // Array of Cloud objects (each cloud is a collection of spheres)
 
 float[][] terrain;  // Array to hold terrain height values
 
@@ -25,6 +27,7 @@ void setup() {
     terrain = new float[cols][rows];
     treePositions = new PVector[numTrees];  // Array to hold tree positions
     treeColors = new color[numTrees];  // Array to hold tree colors
+    clouds = new Cloud[numClouds];  // Array to hold clouds
     forwardShift = -0;
 
     // Generate Perlin noise for each point in the grid once (with a larger height range for bigger mountains)
@@ -54,15 +57,23 @@ void setup() {
         treePositions[i] = new PVector(tx * scale, ty * scale, height);
         treeColors[i] = getAutumnColor();  // Assign a random autumn color
     }
+
+    // Precompute cloud details (position, number of spheres, sphere offsets, and sizes)
+    for (int i = 0; i < numClouds; i++) {
+        float cx = random(width);  // Random x position within world
+        float cy = random(height);  // Random y position within world
+        float cz = random(150, 300);  // Random cloud altitude
+        clouds[i] = new Cloud(new PVector(cx, cy, cz), 20);  // 5 spheres per cloud
+    }
 }
 
 void draw() {
-    background(0);
+    background(0, 0, 0);  // Sky blue background
     lights();  // Add lighting for depth
     directionalLight(255, 255, 255, 0, -1, -1);  // A white light shining from the top
 
     // Set the camera and adjust the view
-    translate(width / 2, height / 2 );
+    translate(width / 2, height / 2);
     rotateX(PI / 4);
     translate(-w / 2, -h / 2 - 400);
 
@@ -138,6 +149,11 @@ void draw() {
         PVector treePos = treePositions[i];
         drawTree(treePos.x, treePos.y, treePos.z, treeColors[i]);  // Use preset color for each tree
     }
+
+    // **Fifth pass: Draw precomputed clouds**
+    for (int i = 0; i < numClouds; i++) {
+        clouds[i].drawCloud();
+    }
 }
 
 // Function to draw a simple tree (cylinder trunk, cone foliage)
@@ -193,4 +209,46 @@ void cone(float r, float h) {
         vertex(x, y, 0);
     }
     endShape();
+}
+
+// Class to represent a Cloud made of multiple precomputed spheres
+class Cloud {
+    PVector position;
+    PVector[] sphereOffsets;  // Offsets for each sphere in the cloud
+    float[] sphereSizes;      // Sizes of each sphere
+
+    // Constructor to initialize cloud with random sphere positions and sizes
+    Cloud(PVector pos, int numSpheres) {
+        position = pos;
+        sphereOffsets = new PVector[numSpheres];
+        sphereSizes = new float[numSpheres];
+        for (int i = 0; i < numSpheres; i++) {
+            // Random offsets for each sphere within the cloud
+            float offsetX = random(-30, 30);
+            float offsetY = random(-15, 15);
+            float offsetZ = random(-10, 10);
+            sphereOffsets[i] = new PVector(offsetX, offsetY, offsetZ);
+
+            // Random size for each sphere
+            sphereSizes[i] = random(30, 60);
+        }
+    }
+
+    // Method to draw the cloud
+    void drawCloud() {
+        pushMatrix();
+        translate(position.x, position.y, position.z);  // Position the cloud
+
+        // Draw all the spheres in the cloud
+        for (int i = 0; i < sphereOffsets.length; i++) {
+            PVector offset = sphereOffsets[i];
+            translate(offset.x, offset.y, offset.z);
+            fill(255, 255, 255);  // White color for clouds
+            noStroke();  // No stroke for clouds
+            sphere(sphereSizes[i]);  // Draw sphere with precomputed size
+            translate(-offset.x, -offset.y, -offset.z);  // Reset translation
+        }
+
+        popMatrix();
+    }
 }
