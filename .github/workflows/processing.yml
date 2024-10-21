@@ -1,0 +1,45 @@
+name: Generate 3D World TIFF
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual triggers from GitHub Actions UI
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Processing
+      run: |
+        sudo apt update
+        sudo apt install -y default-jre xvfb  # Install Java and Xvfb for virtual display
+        wget https://github.com/benfry/processing4/releases/download/processing-1293-4.3/processing-4.3-linux-x64.tgz
+        tar -xzf processing-4.3-linux-x64.tgz
+        sudo ln -s $PWD/processing-4.3/processing-java /usr/local/bin/processing-java
+
+    - name: Prepare output directory
+      run: mkdir -p output  # Ensure the output directory is created
+
+    - name: Prepare sketch directory
+      run: |
+        mkdir sketch_folder
+        mv sketch_3d_world_render.pde sketch_folder/sketch_folder.pde  # Move and rename the .pde file
+
+    - name: Run Processing sketch with virtual display
+      run: |
+        xvfb-run processing-java --sketch=$PWD/sketch_folder --output=$PWD/output --force --run
+
+    - name: List output directory
+      run: ls -al $PWD/sketch_folder/output  # List the contents of the output directory to verify if TIFF is created
+
+    - name: Upload generated TIFF
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: output-tif
+        path: sketch_folder/output/output.tif  # Path to the generated TIFF
