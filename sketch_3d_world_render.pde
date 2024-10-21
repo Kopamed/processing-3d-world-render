@@ -1,5 +1,5 @@
 int cols, rows;
-int scale = 10;  // Size of each grid square
+int scale = 20;  // Size of each grid square
 int w = 2800;  // Width of the plane (doubled)
 int h = 2000;  // Height of the plane (doubled)
 float waterLevel = -30;  // The height at which water will appear (valleys)
