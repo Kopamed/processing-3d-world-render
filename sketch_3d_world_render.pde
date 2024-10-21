@@ -148,8 +148,6 @@ public class Cloud extends WorldObject {
         float halfHeight = height / 2;
         float halfLength = length / 2;
 
-        println("Half width: " + halfWidth, "Half height: " + halfHeight, "Half length: " + halfLength, "Sphere radius min: " + SPHERE_RADIUS_MIN, "Sphere radius max: " + SPHERE_RADIUS_MAX);
-
         if (halfWidth < SPHERE_RADIUS_MAX ||
             halfHeight < SPHERE_RADIUS_MAX ||
             halfLength < SPHERE_RADIUS_MAX) {
@@ -413,10 +411,10 @@ World world;
 
 // ===========  Processing Functions ===========
 void setup() {
-    fullScreen(P3D);
+    size(1920, 1080, P3D);
     noiseSeed(42);
 
-    float d = 3000;
+    float d = 2600;
     camera(-d, -d, d, 
         0, 0, 0,   
         0, 1, 0);
