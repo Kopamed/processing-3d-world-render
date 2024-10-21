@@ -154,6 +154,11 @@ void draw() {
     for (int i = 0; i < numClouds; i++) {
         clouds[i].drawCloud();
     }
+
+    if (frameCount == 1) {
+        save("output.tif");  // Save the rendered frame as output.tif
+        exit();  // Automatically close after saving the file
+    }
 }
 
 // Function to draw a simple tree (cylinder trunk, cone foliage)
