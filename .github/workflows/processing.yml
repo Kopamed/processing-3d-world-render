@@ -35,7 +35,7 @@ jobs:
         xvfb-run processing-java --sketch=$PWD/sketch_folder --output=$PWD/output --force --run
 
     - name: List output directory
-      run: ls -al $PWD/output  # List the contents of the output directory to verify if TIFF is created
+      run: ls -al $PWD/sketch_folder/output  # List the contents of the output directory to verify if TIFF is created
 
     - name: Upload generated TIFF
       if: success()
