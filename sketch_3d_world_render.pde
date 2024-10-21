@@ -206,16 +206,18 @@ public class Cloud extends WorldObject {
 public class Tree extends WorldObject {
     private float trunkHeight;
     private float trunkRadius;
-    private float foliageRadius;
     private ColorScheme colorScheme;
     private color foliageColor;    
+    private float foliageRadius;
+    private float foliageHeight;
 
-    public Tree(PVector position, float trunkHeight, float trunkRadius, float foliageRadius, ColorScheme colorScheme) {
+    public Tree(PVector position, float trunkHeight, float trunkRadius, float foliageRadius, float foliageHeight, ColorScheme colorScheme) {
         super(position);
         this.trunkHeight = trunkHeight;
         this.trunkRadius = trunkRadius;
-        this.foliageRadius = foliageRadius;
         this.colorScheme = colorScheme;
+        this.foliageRadius = foliageRadius;
+        this.foliageHeight = foliageHeight;
         this.foliageColor = colorScheme.getTreeFoliageColor();
     }
 
@@ -226,11 +228,11 @@ public class Tree extends WorldObject {
 
         fill(this.colorScheme.getTreeTrunkColor());
         noStroke();
-        cylinder(this.trunkRadius, this.trunkHeight);
+        cylinder(this.trunkRadius, -this.trunkHeight);
 
-        translate(0, -this.trunkHeight / 2, 0);
+        translate(0, -this.trunkHeight, 0);
         fill(this.foliageColor);
-        cone(this.trunkRadius, this.trunkHeight / 2);
+        cone(this.foliageRadius, this.foliageHeight);
 
         popMatrix();
     }
@@ -244,8 +246,10 @@ public class World {
     private float[][] terrain;
     private float scale;
     private float terrainSize;
+    private int gridSize;
 
     public World(int gridSize, float resolution, float scale, WorldConfiguration worldConfiguration, ColorScheme colorScheme) {
+        this.gridSize = gridSize;
         this.terrain = new float[gridSize][gridSize];
         this.scale = scale;
         this.colorScheme = colorScheme;
@@ -269,6 +273,30 @@ public class World {
 
     public void addObject(WorldObject obj) {
         this.objects.add(obj);
+    }
+
+    public float getHeightFromArray(int x, int z) {
+        if (x < 0 || x >= this.gridSize || z < 0 || z >= this.gridSize) {
+            throw new IllegalArgumentException("Invalid coordinates");
+        }
+
+        return this.terrain[z][x];
+    }
+
+    public WorldConfiguration getWorldConfiguration() {
+        return this.worldConfiguration;
+    }
+
+    public ColorScheme getColorScheme() {
+        return this.colorScheme;
+    }
+
+    public float getScale() {
+        return this.scale;
+    }
+
+    public float getTerrainSize() {
+        return this.terrainSize;
     }
 
     public void drawAll() {
@@ -319,6 +347,46 @@ public class World {
 }
 
 
+// ===========  Helper functions ===========
+void populateWithTrees(World world) {
+    float treeThreshold = 0.5;
+    float densityScale = 0.005;
+    float acceptanceChance = 0.03;
+    WorldConfiguration worldConfiguration = world.getWorldConfiguration();
+    float scale = world.getScale();
+    float terrainSize = world.getTerrainSize(); 
+
+    for (int z = 0; z < world.terrain.length; z++) {
+        for (int x = 0; x < world.terrain[z].length; x++) {
+            float noiseValue = noise(x * densityScale, z * densityScale);
+ 
+            if (noiseValue > treeThreshold) {
+                float height = world.terrain[z][x];  
+                if (height > worldConfiguration.getRockLevelStart() || height < worldConfiguration.getWaterLevel()) {
+                    continue;
+                }
+
+                if (random(1) < 1 - acceptanceChance) {
+                    continue;
+                }
+
+                float adjustedX = x * scale - terrainSize / 2;
+                float adjustedZ = z * scale - terrainSize / 2;
+
+                world.addObject(new Tree(
+                    new PVector(adjustedX, -height, adjustedZ),  
+                    6,
+                    2,
+                    4,  
+                    10,  
+                    world.getColorScheme()
+                ));
+            }
+        }
+    }
+}
+
+
 // ===========  Pre-setup ===========
 World world;
 
@@ -338,6 +406,7 @@ void setup() {
     ColorScheme defaultColorScheme = new DefaultColorScheme();
 
     world = new World(2500, 0.0035f, 1.5f, new DefaultWorldConfiguration(), defaultColorScheme);
+    populateWithTrees(world);
     world.addObject(new Cloud(new PVector(0, -2000, 0), 500, 500, 150, 500, defaultColorScheme));
 }
 
