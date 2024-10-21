@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 
+/*
 // General configuration
 int cols, rows;
 int scale = 20;
@@ -13,6 +14,63 @@ float rockLevel = 80;
 // Misc configuration
 int nTrees = 200;
 int nClouds = 10;
+*/
+
+// ===========  World config ===========
+public interface ColorScheme {
+    color getGrassColor();
+    boolean shouldStroke();
+    color getGrassStrokeColor();
+    color getRockColor();
+    color getWaterColor();
+}
+
+
+public class DefaultColorScheme implements ColorScheme {
+    @Override
+    public color getGrassColor() {
+        return color(34, 139, 34);
+    }
+
+    @Override
+    public boolean shouldStroke() {
+        return false;
+    }
+
+    @Override
+    public color getGrassStrokeColor() {
+        return color(50, 205, 50);
+    }
+
+    @Override
+    public color getRockColor() {
+        return color(169, 169, 169);
+    }
+
+    @Override
+    public color getWaterColor() {
+        return color(0, 0, 255);
+    }
+}
+
+
+public interface WorldConfiguration {
+    float getWaterLevel();
+    float getRockLevel();
+}
+
+
+public class DefaultWorldConfiguration implements WorldConfiguration {
+    @Override
+    public float getWaterLevel() {
+        return 320;
+    }
+
+    @Override
+    public float getRockLevel() {
+        return 800;
+    }
+}
 
 
 // ===========  World Objects ===========
@@ -88,9 +146,32 @@ public class Cloud extends WorldObject {
 
 
 public class World {
+    private WorldConfiguration worldConfiguration;
+    private ColorScheme colorScheme;
     private ArrayList<WorldObject> objects;
+    private float[][] terrain;
+    private float scale;
+    private float terrainSize;
 
-    public World() {
+    public World(int gridSize, float resolution, float scale, WorldConfiguration worldConfiguration, ColorScheme colorScheme) {
+        this.terrain = new float[gridSize][gridSize];
+        this.scale = scale;
+        this.colorScheme = colorScheme;
+        this.worldConfiguration = worldConfiguration;
+        this.terrainSize = gridSize * scale;
+
+        float zoff = 0;
+        for (int z = 0; z < gridSize; z++) { 
+            float xoff = 0;
+            for (int x = 0; x < gridSize; x++) {
+                this.terrain[z][x] = map(noise(xoff, zoff), 0, 1, 0, 1000);  
+                
+                xoff += resolution;
+            }
+            zoff += resolution;
+        }
+
+
         this.objects = new ArrayList<>();
     }
 
@@ -99,6 +180,40 @@ public class World {
     }
 
     public void drawAll() {
+        pushMatrix();
+        translate(-this.terrainSize / 2, 0, -this.terrainSize / 2);
+
+        if(this.colorScheme.shouldStroke()) {
+            stroke(this.colorScheme.getGrassStrokeColor());
+        } else {
+            noStroke();
+        }
+
+        for (int z = 0; z < this.terrain.length - 1; z++) {
+            beginShape(QUAD_STRIP);
+            for (int x = 0; x < this.terrain[z].length; x++) {
+                float height1 = this.terrain[z][x];
+                float height2 = this.terrain[z + 1][x];
+
+                if (height1 > this.worldConfiguration.getRockLevel()) {
+                    fill(this.colorScheme.getRockColor());
+                } else {
+                    fill(this.colorScheme.getGrassColor()); 
+                }
+                vertex(x * scale, height1, z * scale);
+
+                if (height2 > this.worldConfiguration.getRockLevel()) {
+                    fill(this.colorScheme.getRockColor());
+                } else {
+                    fill(this.colorScheme.getGrassColor()); 
+                }
+                vertex(x * scale, height2, (z + 1) * scale);
+            }
+            endShape();
+        }
+
+        popMatrix();
+
         for (WorldObject obj : this.objects) {
             obj.draw(); 
         }
@@ -109,17 +224,17 @@ public class World {
 // ===========  Pre-setup ===========
 World world;
 
+
 // ===========  Processing Functions ===========
 void setup() {
     fullScreen(P3D);
 
-    camera(0, -5000, 5000, 
+    camera(0, -1900, 1800, 
         0, 0, 0,   
         0, 1, 0);   
 
-    world = new World();
-    world.addObject(new Cloud(new PVector(0, 0, 0), 500, 1000, 150, 1000));
-    world.addObject(new Cloud(new PVector(0, -200, 0), 500, 500, 150, 500));
+    world = new World(250, 0.05f, 15, new DefaultWorldConfiguration(), new DefaultColorScheme());
+    world.addObject(new Cloud(new PVector(0, -2000, 0), 500, 500, 150, 500));
 }
 
 
