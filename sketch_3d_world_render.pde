@@ -411,8 +411,8 @@ World world;
 
 // ===========  Processing Functions ===========
 void setup() {
-    size(1920, 1080, P3D);
-    noiseSeed(42);
+    fullScreen(P3D);
+    //noiseSeed(42);
 
     float d = 2600;
     camera(-d, -d, d, 

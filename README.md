@@ -1,23 +1,49 @@
-# 3D World
+# 3D World in Processing
 
-Welcome to the 3D World project! This is my first-ever program created in Processing, and I decided to challenge myself by building a 3D world from scratch. The world features dynamically generated terrain, trees with autumn foliage, water bodies, fluffy clouds, and rocky mountains. All objects are procedurally generated and rendered in 3D using Processing's P3D mode.
+This project showcases a procedurally generated 3D environment created using Processing's P3D mode. It includes dynamic terrain, trees, clouds, and water bodies, all rendered in real-time.
 
 ## Features
 
-- Procedurally Generated Terrain: The terrain is generated using Perlin noise, which provides a natural and organic look. The heights of different terrain points create valleys, hills, and mountains.
+- **Procedurally Generated Terrain:** The terrain is generated using Perlin noise, creating a natural and organic landscape with valleys, hills, and rocky mountains. Different terrain heights dictate water bodies, grassy areas, and rocky formations.
 
-- Dynamic Object System: A flexible object-oriented design allows for the creation and management of various types of objects in the world (trees, clouds, etc.) by extending a base class WorldObject.
+- **Trees with Foliage:** The world features trees that are procedurally placed using noise-based density maps, with each tree rendered in 3D with a trunk and a cone-shaped foliage that varies in color to mimic autumn foliage.
 
-- Trees with Autumn Foliage: The world features trees with randomly colored autumn leaves, ranging from greens to oranges and reds. Each tree is generated with a trunk and foliage in 3D.
+- **Dynamic Clouds:** The sky contains procedurally placed clouds, formed using clusters of spheres to create fluffy, natural-looking shapes.
 
-- Fluffy Clouds: The sky contains randomly placed fluffy clouds made up of overlapping 3D ellipsoids. Their positions and shapes are precomputed to avoid jittering, giving a consistent and natural look to the sky.
+- **Water Bodies:** Bodies of water are placed at lower elevations, creating lakes and other water features that blend naturally into the terrain.
 
-- Rocky Mountains: Terrain that rises above a certain height is marked as rocky, adding texture and diversity to the landscape.
+- **Lighting and Camera Setup:** A dynamic lighting system enhances the 3D effect of the terrain and objects. The camera provides a smooth, immersive view of the world.
 
-- Water Bodies: Bodies of water appear at lower elevations, giving the world lakes or oceans, adding to the realism.
+- **Fully Extensible:** The world and its objects are managed through an object-oriented design, making it easy to add new types of world objects by extending base classes like `WorldObject`.
 
-- Lighting and Camera: A dynamic lighting system adds depth to the 3D objects. The camera is set up to give a nice perspective view of the world.
+## Example Render
 
-## Project Structure
+Here’s an example render of the world:
 
-Todo
+![Example Render](example-renders/world_2024-10-21_23-06-44.png)
+
+## Code Overview
+
+### Procedural Generation
+
+- **Perlin Noise:** The terrain is generated using Perlin noise to simulate natural, organic patterns. Clouds and tree placement also use noise to create varying densities across the world.
+
+- **Noise-Based Object Placement:** Trees and clouds are placed based on noise thresholds to create realistic clusters like forests and cloud formations, with some randomness for variation.
+
+- **Height-Based Shading:** The terrain's height determines the color shading between grass, rocks, and water, adding to the realism of the landscape.
+
+### Object-Oriented Structure
+
+The project is built around an extensible object-oriented structure. The `World` class manages terrain generation, object placement, and rendering, while specific world objects like trees and clouds are managed as instances of the `WorldObject` class.
+
+### Customizability
+
+- **Color Scheme:** The project features a `ColorScheme` interface that allows for easy customization of colors for terrain, trees, clouds, and water.
+
+- **World Configuration:** The terrain and objects adapt to parameters defined in the `WorldConfiguration` interface, such as water levels and rock formations.
+
+## Future Plans
+
+- **Improving Realism:** Future iterations will focus on refining terrain generation for more diverse biomes and smoother transitions.
+- **Exploration of Procedurally Generated World:** Implementing a system to allow players to explore the procedurally generated world, potentially with additional interactions.
+- **Performance Optimization:** As the world grows larger, optimizations will be made to keep rendering smooth and efficient.
