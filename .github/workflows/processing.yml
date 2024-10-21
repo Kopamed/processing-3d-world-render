@@ -34,6 +34,12 @@ jobs:
     - name: List output directory
       run: ls -al $PWD/output  # List the contents of the output directory to verify
 
+    - name: List output directory
+      run: ls -al $PWD/sketch_folder  # List the contents of the output directory to verify
+
+    - name: List output directory
+      run: ls -al $PWD  # List the contents of the output directory to verify
+
     - name: Upload generated TIFF
       if: success()  # Only upload if previous steps were successful
       uses: actions/upload-artifact@v4
