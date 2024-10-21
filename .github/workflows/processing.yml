@@ -12,36 +12,33 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4  # Updated to v4 to avoid deprecated Node.js version
+      uses: actions/checkout@v4
 
     - name: Install Processing
       run: |
         sudo apt update
-        sudo apt install -y default-jre  # Install Java Runtime
-        wget https://github.com/benfry/processing4/releases/download/processing-1293-4.3/processing-4.3-linux-x64.tgz  # Correct URL
-        tar -xzf processing-4.3-linux-x64.tgz  # Correct file name
-        sudo ln -s $PWD/processing-4.3/processing-java /usr/local/bin/processing-java  # Updated directory
+        sudo apt install -y default-jre xvfb  # Install Java and Xvfb for virtual display
+        wget https://github.com/benfry/processing4/releases/download/processing-1293-4.3/processing-4.3-linux-x64.tgz
+        tar -xzf processing-4.3-linux-x64.tgz
+        sudo ln -s $PWD/processing-4.3/processing-java /usr/local/bin/processing-java
+
+    - name: Prepare output directory
+      run: mkdir -p output  # Ensure the output directory is created
 
     - name: Prepare sketch directory
       run: |
-        mkdir sketch_folder   # Create a new directory for the sketch
+        mkdir sketch_folder
         mv sketch_3d_world_render.pde sketch_folder/sketch_folder.pde  # Move and rename the .pde file
 
-    - name: Run Processing sketch
+    - name: Run Processing sketch with virtual display
       run: |
-        processing-java --sketch=$PWD/sketch_folder --output=$PWD/output --force --run
+        xvfb-run processing-java --sketch=$PWD/sketch_folder --output=$PWD/output --force --run
 
     - name: List output directory
-      run: ls -al $PWD/output  # List the contents of the output directory to verify
-
-    - name: List output directory
-      run: ls -al $PWD/sketch_folder  # List the contents of the output directory to verify
-
-    - name: List output directory
-      run: ls -al $PWD  # List the contents of the output directory to verify
+      run: ls -al $PWD/output  # List the contents of the output directory to verify if TIFF is created
 
     - name: Upload generated TIFF
-      if: success()  # Only upload if previous steps were successful
+      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: output-tif

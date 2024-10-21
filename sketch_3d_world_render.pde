@@ -156,8 +156,7 @@ void draw() {
     }
 
     if (frameCount == 1) {
-        save("output/output.tif");  // Save the rendered frame as output.tif
-        save("output.tif");
+        save("output/output.tif");
         exit();  // Automatically close after saving the file
     }
 }
