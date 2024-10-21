@@ -12,15 +12,15 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4  # Updated to v4 to avoid deprecated Node.js version
 
     - name: Install Processing
       run: |
         sudo apt update
         sudo apt install -y default-jre  # Install Java Runtime
-        wget https://github.com/benfry/processing4/releases/download/processing-1293-4.3/processing-4.3-linux-x64.tgz
-        tar -xzf processing-4.0b8-linux-x64.tgz
-        sudo ln -s $PWD/processing-4.0b8/processing-java /usr/local/bin/processing-java
+        wget https://github.com/processing/processing4/releases/download/processing-4.3/processing-4.3-linux-x64.tgz  # Correct URL
+        tar -xzf processing-4.3-linux-x64.tgz  # Correct file name
+        sudo ln -s $PWD/processing-4.3/processing-java /usr/local/bin/processing-java  # Updated directory
 
     - name: Run Processing sketch
       run: |
