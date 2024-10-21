@@ -25,7 +25,7 @@ jobs:
     - name: Prepare sketch directory
       run: |
         mkdir sketch_folder   # Create a new directory for the sketch
-        mv sketch_3d_world_render.pde sketch_folder/  # Move the .pde file to the new directory
+        mv sketch_3d_world_render.pde sketch_folder/sketch_folder.pde  # Move and rename the .pde file
 
     - name: Run Processing sketch
       run: |
