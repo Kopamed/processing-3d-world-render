@@ -16,6 +16,31 @@ int nTrees = 200;
 int nClouds = 10;
 */
 
+// ===========  Misc functions ===========
+void cylinder(float r, float h) {
+    beginShape(QUAD_STRIP);
+    for (int i = 0; i <= 360; i += 5) {
+        float rad = radians(i);
+        float x = cos(rad) * r;
+        float y = sin(rad) * r;
+        vertex(x, 0, y);
+        vertex(x, h, y);
+    }
+    endShape();
+}
+
+void cone(float r, float h) {
+    beginShape(TRIANGLE_FAN);
+    vertex(0, -h, 0);
+    for (int i = 0; i <= 360; i += 5) {
+        float rad = radians(i);
+        float x = cos(rad) * r;
+        float y = sin(rad) * r;
+        vertex(x, 0, y);
+    }
+    endShape();
+}
+
 // ===========  World config ===========
 public interface ColorScheme {
     color getGrassColor();
@@ -23,10 +48,15 @@ public interface ColorScheme {
     color getGrassStrokeColor();
     color getRockColor();
     color getWaterColor();
+    color getTreeTrunkColor();
+    color getTreeFoliageColor();
+    color getCloudColor();
 }
 
 
 public class DefaultColorScheme implements ColorScheme {
+    color[] autumnColors = {color(34, 139, 34), color(255, 255, 0), color(255, 165, 0), color(255, 69, 0), color(139, 69, 19)};
+
     @Override
     public color getGrassColor() {
         return color(34, 139, 34);
@@ -49,26 +79,51 @@ public class DefaultColorScheme implements ColorScheme {
 
     @Override
     public color getWaterColor() {
-        return color(0, 0, 255);
+        return color(0, 0, 255, 196);
+    }
+
+    @Override
+    public color getTreeTrunkColor() {
+        return color(139, 69, 19);
+    }
+
+    @Override
+    public color getTreeFoliageColor() {
+        float t = random(1);
+        int index1 = int(t * (autumnColors.length - 1)); 
+        int index2 = index1 + 1;
+        if (index2 >= autumnColors.length) index2 = index1; 
+        return lerpColor(autumnColors[index1], autumnColors[index2], t % 1);
+    }
+
+    @Override
+    public color getCloudColor() {
+        return color(255, 255, 255);
     }
 }
 
 
 public interface WorldConfiguration {
     float getWaterLevel();
-    float getRockLevel();
+    float getRockLevelStart();
+    float getRockLevelFull();
 }
 
 
 public class DefaultWorldConfiguration implements WorldConfiguration {
     @Override
     public float getWaterLevel() {
-        return 320;
+        return 388;
     }
 
     @Override
-    public float getRockLevel() {
+    public float getRockLevelStart() {
         return 600;
+    }
+
+    @Override
+    public float getRockLevelFull() {
+        return 675;
     }
 }
 
@@ -95,8 +150,9 @@ public class Cloud extends WorldObject {
 
     private PVector[] sphereOffsets;
     private float[] sphereRadiuses;
+    private ColorScheme colorScheme;
 
-    public Cloud(PVector position, int numSpheres, int width, int height, int length) {
+    public Cloud(PVector position, int numSpheres, int width, int height, int length, ColorScheme colorScheme) {
         super(position);
 
         if (numSpheres <= 0) {
@@ -117,6 +173,7 @@ public class Cloud extends WorldObject {
 
         this.sphereOffsets = new PVector[numSpheres];
         this.sphereRadiuses = new float[numSpheres];
+        this.colorScheme = colorScheme;
 
         float sphereRadius;
         for (int i = 0; i < numSpheres; i++) {
@@ -138,9 +195,44 @@ public class Cloud extends WorldObject {
             translate(this.position.x + this.sphereOffsets[i].x, this.position.y + this.
             sphereOffsets[i].y, this.position.z + this.sphereOffsets[i].z);
             noStroke();
+            fill(this.colorScheme.getCloudColor());
             sphere(this.sphereRadiuses[i]);
             popMatrix();
         }
+    }
+}
+
+
+public class Tree extends WorldObject {
+    private float trunkHeight;
+    private float trunkRadius;
+    private float foliageRadius;
+    private ColorScheme colorScheme;
+    private color foliageColor;    
+
+    public Tree(PVector position, float trunkHeight, float trunkRadius, float foliageRadius, ColorScheme colorScheme) {
+        super(position);
+        this.trunkHeight = trunkHeight;
+        this.trunkRadius = trunkRadius;
+        this.foliageRadius = foliageRadius;
+        this.colorScheme = colorScheme;
+        this.foliageColor = colorScheme.getTreeFoliageColor();
+    }
+
+    @Override
+    public void draw() {
+        pushMatrix();
+        translate(this.position.x, this.position.y, this.position.z);
+
+        fill(this.colorScheme.getTreeTrunkColor());
+        noStroke();
+        cylinder(this.trunkRadius, this.trunkHeight);
+
+        translate(0, -this.trunkHeight / 2, 0);
+        fill(this.foliageColor);
+        cone(this.trunkRadius, this.trunkHeight / 2);
+
+        popMatrix();
     }
 }
 
@@ -195,22 +287,28 @@ public class World {
                 float height1 = this.terrain[z][x];
                 float height2 = this.terrain[z + 1][x];
 
-                if (height1 > this.worldConfiguration.getRockLevel()) {
-                    fill(this.colorScheme.getRockColor());
-                } else {
-                    fill(this.colorScheme.getGrassColor()); 
-                }
+                float t;
+
+                t = map(height1, this.worldConfiguration.getRockLevelStart(), this.worldConfiguration.getRockLevelFull(), 0, 1);
+                fill(lerpColor(this.colorScheme.getGrassColor(), this.colorScheme.getRockColor(), t));
                 vertex(x * scale, -height1, z * scale);
 
-                if (height2 > this.worldConfiguration.getRockLevel()) {
-                    fill(this.colorScheme.getRockColor());
-                } else {
-                    fill(this.colorScheme.getGrassColor()); 
-                }
+                t = map(height2, this.worldConfiguration.getRockLevelStart(), this.worldConfiguration.getRockLevelFull(), 0, 1);
+                fill(lerpColor(this.colorScheme.getGrassColor(), this.colorScheme.getRockColor(), t));
                 vertex(x * scale, -height2, (z + 1) * scale);
             }
             endShape();
         }
+
+        fill(this.colorScheme.getWaterColor());
+        noStroke();
+
+        beginShape(QUADS);  
+        vertex(0, -this.worldConfiguration.getWaterLevel(), 0);               // Bottom-left corner
+        vertex(this.terrainSize, -this.worldConfiguration.getWaterLevel(), 0);    // Bottom-right corner
+        vertex(this.terrainSize, -this.worldConfiguration.getWaterLevel(), this.terrainSize);  // Top-right corner
+        vertex(0, -this.worldConfiguration.getWaterLevel(), this.terrainSize);    // Top-left corner
+        endShape();
 
         popMatrix();
 
@@ -231,10 +329,16 @@ void setup() {
 
     camera(0, -1900, 1800, 
         0, 0, 0,   
-        0, 1, 0);   
+        0, 1, 0);
 
-    world = new World(250, 0.05f, 15, new DefaultWorldConfiguration(), new DefaultColorScheme());
-    world.addObject(new Cloud(new PVector(0, -2000, 0), 500, 500, 150, 500));
+    /*camera(0, -5000, 5000, 
+        0, 0, 0,   
+        0, 1, 0);  */
+
+    ColorScheme defaultColorScheme = new DefaultColorScheme();
+
+    world = new World(2500, 0.0035f, 1.5f, new DefaultWorldConfiguration(), defaultColorScheme);
+    world.addObject(new Cloud(new PVector(0, -2000, 0), 500, 500, 150, 500, defaultColorScheme));
 }
 
 
@@ -243,6 +347,8 @@ void draw() {
 
     lights();
     directionalLight(255, 255, 255, 0, -1, -1);
+    //ambientLight(110, 110, 110); 
+
 
     world.drawAll();
 
