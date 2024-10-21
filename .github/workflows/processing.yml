@@ -18,7 +18,7 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y default-jre  # Install Java Runtime
-        wget https://github.com/processing/processing4/releases/download/processing-4.3/processing-4.3-linux-x64.tgz  # Correct URL
+        wget https://github.com/benfry/processing4/releases/download/processing-1293-4.3/processing-4.3-linux-x64.tgz  # Correct URL
         tar -xzf processing-4.3-linux-x64.tgz  # Correct file name
         sudo ln -s $PWD/processing-4.3/processing-java /usr/local/bin/processing-java  # Updated directory
 
