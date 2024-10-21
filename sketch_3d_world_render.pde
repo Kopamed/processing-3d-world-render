@@ -1,3 +1,5 @@
+/*
+
 int cols, rows;
 int scale = 20;  // Size of each grid square
 int w = 2800;  // Width of the plane (doubled)
@@ -252,3 +254,4 @@ class Cloud {
         popMatrix();
     }
 }
+*/
