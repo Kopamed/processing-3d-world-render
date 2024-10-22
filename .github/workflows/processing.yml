@@ -32,7 +32,7 @@ jobs:
 
     - name: Modify sketch to add exit after save
       run: |
-        sed -i 's|save("output/output.tif");|save("output/output.tif");\n    exit(0);|' sketch_folder/sketch_folder.pde
+        sed -i 's|save("output/output.tif");|save("output/output.tif");\n    exit();|' sketch_folder/sketch_folder.pde
 
     - name: Run Processing sketch with virtual display
       run: |
