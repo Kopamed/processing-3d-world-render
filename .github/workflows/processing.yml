@@ -30,6 +30,10 @@ jobs:
         mkdir sketch_folder
         mv sketch_3d_world_render.pde sketch_folder/sketch_folder.pde  # Move and rename the .pde file
 
+    - name: Modify sketch for smaller resolution
+      run: |
+        sed -i 's/fullScreen(P3D);/size(400, 300, P3D);/' sketch_folder/sketch_folder.pde
+
     - name: Run Processing sketch with virtual display
       run: |
         xvfb-run processing-java --sketch=$PWD/sketch_folder --output=$PWD/output --force --run
