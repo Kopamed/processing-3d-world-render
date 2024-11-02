@@ -1,3 +1,4 @@
+// https://github.com/Kopamed/processing-3d-world-render
 import java.util.ArrayList;
 
 
@@ -434,6 +435,29 @@ void apply3DCamera() {
 // ===========  Pre-setup ===========
 World world;
 
+/*
+    The following 3 variables determine what the world looks like
+    These values work well together. These values were found from a lot of trial and error
+    There is no reasoning behind them. I just found them to look good
+*/
+final float REALISTIC_RESOLUTION = 0.0035f;
+final float REALISTIC_SCALE = 1.5f;
+final int PLEASANT_WORLD_VISUAL_SIZE = 2500;
+
+/* 
+    The following variable will scale the size of each rendered quad of the plane in your world.
+    Bigger quads = better performance = more FPS = worse quality
+    If the world looks too ugly, try decreasing this value
+    If your FPS is too low, try increasing this value
+    Long story short, just like with everything in life, find a balance. Or a better programmer.
+*/
+final int HOW_BAD_IS_YOUR_COMPUTER = 10;
+
+// One time calculation
+final int GRID_SIZE = PLEASANT_WORLD_VISUAL_SIZE / HOW_BAD_IS_YOUR_COMPUTER;
+final float RESOLUTION = REALISTIC_RESOLUTION * HOW_BAD_IS_YOUR_COMPUTER;
+final float SCALE = REALISTIC_SCALE * HOW_BAD_IS_YOUR_COMPUTER;
+
 
 // ===========  Processing Functions ===========
 void setup() {
@@ -444,7 +468,7 @@ void setup() {
 
     ColorScheme defaultColorScheme = new DefaultColorScheme();
 
-    world = new World(2500, 0.0035f, 1.5f, new DefaultWorldConfiguration(), defaultColorScheme);
+    world = new World(GRID_SIZE, RESOLUTION, SCALE, new DefaultWorldConfiguration(), defaultColorScheme);
     populateWithTrees(world);
     populateWithClouds(world);
 }
