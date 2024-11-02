@@ -405,6 +405,32 @@ void populateWithClouds(World world) {
 }
 
 
+// ===========  Misc functions ===========
+void drawFPS() {
+    // Switch to 2D overlay mode
+    hint(DISABLE_DEPTH_TEST); // Disable depth test for overlay text
+    camera(); // Reset the camera to default for 2D drawing
+    ortho(); // Switch to orthographic projection for 2D
+
+    // Draw FPS counter
+    fill(255); // Set text color to white
+    textSize(16);
+    text("FPS: " + int(frameRate), 10, 20); // Display FPS at the top-left corner
+
+    // Restore 3D settings
+    hint(ENABLE_DEPTH_TEST); // Re-enable depth test for 3D rendering
+    perspective(); // Restore perspective projection
+    apply3DCamera(); // Reapply custom 3D camera settings
+}
+
+void apply3DCamera() {
+    float d = 2600;
+    camera(-d, -d, d, 
+           0, 0, 0,   
+           0, 1, 0);
+}
+
+
 // ===========  Pre-setup ===========
 World world;
 
@@ -414,10 +440,7 @@ void setup() {
     fullScreen(P3D);
     //noiseSeed(42);
 
-    float d = 2600;
-    camera(-d, -d, d, 
-        0, 0, 0,   
-        0, 1, 0);
+    apply3DCamera();
 
     ColorScheme defaultColorScheme = new DefaultColorScheme();
 
@@ -438,4 +461,6 @@ void draw() {
     if (frameCount == 1) {
         save("output/output.tif");
     }
+
+    drawFPS();
 }
