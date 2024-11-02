@@ -65,7 +65,7 @@ public class DefaultColorScheme implements ColorScheme {
 
     @Override
     public color getWaterColor() {
-        return color(0, 0, 255, 196);
+        return color(14, 67, 227, 164);
     }
 
     @Override
@@ -335,7 +335,6 @@ public class World {
 void populateWithTrees(World world) {
     float treeThreshold = 0.5;
     float densityScale = 0.008;
-    float acceptanceChance = 0.04;
     WorldConfiguration worldConfiguration = world.getWorldConfiguration();
     float scale = world.getScale();
     float terrainSize = world.getTerrainSize(); 
@@ -347,10 +346,6 @@ void populateWithTrees(World world) {
             if (noiseValue > treeThreshold) {
                 float height = world.terrain[z][x];  
                 if (height > worldConfiguration.getRockLevelStart() || height < worldConfiguration.getWaterLevel()) {
-                    continue;
-                }
-
-                if (random(1) < 1 - acceptanceChance) {
                     continue;
                 }
 
@@ -374,7 +369,6 @@ void populateWithTrees(World world) {
 void populateWithClouds(World world) {
     float cloudThreshold = 0.65;  
     float densityScale = 0.001;
-    float acceptanceChance = 0.5;
     WorldConfiguration worldConfiguration = world.getWorldConfiguration();
     float scale = world.getScale();
     float terrainSize = world.getTerrainSize(); 
@@ -384,11 +378,6 @@ void populateWithClouds(World world) {
             float noiseValue = noise(x * densityScale, z * densityScale);
             
             if (noiseValue > cloudThreshold) {  
-
-                if (random(1) < 1 - acceptanceChance) {
-                    continue;
-                }
-
                 float adjustedX = x * scale - terrainSize / 2;
                 float adjustedZ = z * scale - terrainSize / 2;
 
@@ -469,7 +458,7 @@ void setup() {
     ColorScheme defaultColorScheme = new DefaultColorScheme();
 
     world = new World(GRID_SIZE, RESOLUTION, SCALE, new DefaultWorldConfiguration(), defaultColorScheme);
-    populateWithTrees(world);
+    //populateWithTrees(world);
     populateWithClouds(world);
 }
 
