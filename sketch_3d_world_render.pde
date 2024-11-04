@@ -1,5 +1,7 @@
 // https://github.com/Kopamed/processing-3d-world-render
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 
 // ===========  Misc functions ===========
@@ -37,6 +39,8 @@ public interface ColorScheme {
     color getTreeTrunkColor();
     color getTreeFoliageColor();
     color getCloudColor();
+    color getRocketColor();
+    color getRocketHeadColor();
 }
 
 
@@ -86,10 +90,22 @@ public class DefaultColorScheme implements ColorScheme {
     public color getCloudColor() {
         return color(255, 255, 255);
     }
+
+    @Override
+    public color getRocketColor() {
+        return color(255, 0, 0);
+    }
+
+    @Override
+    public color getRocketHeadColor() {
+        return color(128, 128, 128);
+    }
 }
 
 
 public interface WorldConfiguration {
+    int getWorldHeight();
+
     float getWaterLevel();
     float getRockLevelStart();
     float getRockLevelFull();
@@ -98,18 +114,23 @@ public interface WorldConfiguration {
 
 public class DefaultWorldConfiguration implements WorldConfiguration {
     @Override
+    public int getWorldHeight() {
+        return 1250;
+    }
+
+    @Override
     public float getWaterLevel() {
-        return 388;
+        return 0.388 * getWorldHeight();
     }
 
     @Override
     public float getRockLevelStart() {
-        return 600;
+        return 0.6 * getWorldHeight();
     }
 
     @Override
     public float getRockLevelFull() {
-        return 675;
+        return 0.675 * getWorldHeight();
     }
 }
 
@@ -140,6 +161,7 @@ public class Cloud extends WorldObject {
 
     public Cloud(PVector position, int numSpheres, int width, int height, int length, ColorScheme colorScheme) {
         super(position);
+        randomSeed((long)((int)position.x * 73856093 ^ (int)position.z * 19349663));
 
         if (numSpheres <= 0) {
             throw new IllegalArgumentException("Number of spheres must be greater than 0");
@@ -223,6 +245,38 @@ public class Tree extends WorldObject {
 }
 
 
+public class Rocket extends WorldObject {
+    private float rocketBodyHeight;
+    private float rocketHeadHeight;
+    private float rocketRadius;
+    private ColorScheme colorScheme;
+
+    public Rocket(PVector relativePosition, float rocketBodyHeight, float rocketHeadHeight, float rocketRadius, ColorScheme colorScheme) {
+        super(relativePosition);
+        this.rocketBodyHeight = rocketBodyHeight;
+        this.rocketHeadHeight = rocketHeadHeight;
+        this.rocketRadius = rocketRadius;
+        this.colorScheme = colorScheme;
+    }
+
+    @Override
+    public void draw() {
+        pushMatrix();
+        translate(this.relativePosition.x, this.relativePosition.y, this.relativePosition.z);
+
+        fill(this.colorScheme.getRocketColor());
+        noStroke();
+        cylinder(this.rocketRadius, -this.rocketBodyHeight);
+        
+        translate(0, -this.rocketBodyHeight, 0);
+        fill(this.colorScheme.getRocketHeadColor());
+        cone(this.rocketRadius, this.rocketHeadHeight);
+
+        popMatrix();
+    }
+}
+
+
 public class World {
     private WorldConfiguration worldConfiguration;
     private ColorScheme colorScheme;
@@ -233,6 +287,7 @@ public class World {
     private float terrainSize;
     private int gridSize;
     private PVector position;
+    private Set<PVector> generatedCloudCells;
 
     public World(PVector position, int gridSize, float resolution, float scale, WorldConfiguration worldConfiguration, ColorScheme colorScheme) {
         this.position = position;
@@ -245,13 +300,17 @@ public class World {
         this.worldConfiguration = worldConfiguration;
         this.terrainSize = gridSize * scale;
         this.objects = new ArrayList<>();
+
+        this.generatedCloudCells = new HashSet<>();
     }
 
     public void setup() {
+        this.objects.clear();
         generateWorld();
     }
 
     private void generateWorld() {
+        pruneObjects();
         generateTerrain();
         //generateClouds();
     }
@@ -261,7 +320,7 @@ public class World {
         for (int z = 0; z < gridSize; z++) { 
             float xoff = 0;
             for (int x = 0; x < gridSize; x++) {
-                this.terrain[z][x] = map(noise(xoff + this.position.x, zoff + this.position.z), 0, 1, 0, 1000);  
+                this.terrain[z][x] = map(noise(xoff + this.position.x, zoff + this.position.z), 0, 1, 0, this.worldConfiguration.getWorldHeight());  
                 
                 xoff += this.resolution;
             }
@@ -270,39 +329,70 @@ public class World {
     }
 
     private void pruneObjects() {
+        float removalDistance = 2000; // Adjust as needed
+
         for (int i = 0; i < this.objects.size(); i++) {
             WorldObject obj = this.objects.get(i);
             PVector pos = obj.getRelativePosition();
-            if (pos.x < this.position.x - this.terrainSize / 2 || pos.x > this.position.x + this.terrainSize / 2 ||
-                pos.z < this.position.z - this.terrainSize / 2 || pos.z > this.position.z + this.terrainSize / 2) {
+            float distanceSquared = sq(pos.x - this.position.x) + sq(pos.z - this.position.z);
+
+            if (distanceSquared > sq(removalDistance)) {
                 this.objects.remove(i);
                 i--;
             }
         }
+
+        // Optionally, remove entries from generatedCloudCells that are too far
+        float chunkRemovalDistance = 3; // Number of chunks
+        int currentCellX = floor(this.position.x / 500);
+        int currentCellZ = floor(this.position.z / 500);
+
+        generatedCloudCells.removeIf(cell -> 
+            abs(cell.x - currentCellX) > chunkRemovalDistance || 
+            abs(cell.y - currentCellZ) > chunkRemovalDistance
+        );
     }
 
+
     private void generateClouds() {
-        float cloudThreshold = 0.65;  
-        float densityScale = 0.001;
+        // Define the size of each cloud chunk
+        int cloudChunkSize = 500; // Adjust as needed
+        float densityScale = 0.001f;
+        float cloudThreshold = 0.65f;
 
+        // Calculate the range around the current position to generate clouds
+        int range = 2; // Number of chunks around the current position
 
+        // Calculate the grid cell coordinates for the current position
+        int currentCellX = floor(this.position.x / cloudChunkSize);
+        int currentCellZ = floor(this.position.z / cloudChunkSize);
 
-        for (int z = 0; z < this.terrain.length; z += 100) {  
-            for (int x = 0; x < this.terrain[z].length; x += 100) {
-                float noiseValue = noise(x * densityScale, z * densityScale);
-                
-                if (noiseValue > cloudThreshold) {  
-                    float adjustedX = x * scale - terrainSize / 2;
-                    float adjustedZ = z * scale - terrainSize / 2;
+        for (int dz = -range; dz <= range; dz++) {
+            for (int dx = -range; dx <= range; dx++) {
+                int cellX = currentCellX + dx;
+                int cellZ = currentCellZ + dz;
 
-                    this.addObject(new Cloud(
-                        new PVector(adjustedX, random(-1500, -1200), adjustedZ),  
-                        20,  // Number of spheres in the cloud
-                        300, // Cloud width
-                        150, // Cloud height
-                        300, // Cloud length
-                        world.getColorScheme()
-                    ));
+                // Create a unique identifier for the grid cell
+                PVector cell = new PVector(cellX, cellZ);
+
+                if (!generatedCloudCells.contains(cell)) {
+                    // Mark this cell as generated
+                    generatedCloudCells.add(cell);
+
+                    // Generate clouds for this cell based on noise
+                    float noiseValue = noise(cellX * densityScale, cellZ * densityScale);
+
+                    if (noiseValue > cloudThreshold) {
+                        float cloudX = cellX * cloudChunkSize + cloudChunkSize / 2;
+                        float cloudZ = cellZ * cloudChunkSize + cloudChunkSize / 2;
+
+                        // Adjust positions to center the cloud in the chunk
+                        this.addObject(new Cloud(
+                            new PVector(cloudX, random(-1500, -1200), cloudZ),
+                            20, 300, 150, 300,
+                            this.getColorScheme()
+                        ));
+                    }
                 }
             }
         }
@@ -480,6 +570,7 @@ void moveWorldFromMouse(World world, float sensitivity) {
 
 // ===========  Pre-setup ===========
 World world;
+Rocket rocket;
 
 /*
     The following 3 variables determine what the world looks like
@@ -519,6 +610,9 @@ void setup() {
 
     world = new World(new PVector(0, 0, 0), GRID_SIZE, RESOLUTION, SCALE, new DefaultWorldConfiguration(), defaultColorScheme);
     world.setup();
+
+    rocket = new Rocket(new PVector(0, -1000, 0), 200, 50, 25, defaultColorScheme);
+    world.addObject(rocket);
 }
 
 
