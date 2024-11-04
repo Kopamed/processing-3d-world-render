@@ -1,3 +1,4 @@
+// https://github.com/Kopamed/processing-3d-world-render
 import java.util.ArrayList;
 
 
@@ -64,7 +65,7 @@ public class DefaultColorScheme implements ColorScheme {
 
     @Override
     public color getWaterColor() {
-        return color(0, 0, 255, 196);
+        return color(14, 67, 227, 164);
     }
 
     @Override
@@ -115,14 +116,14 @@ public class DefaultWorldConfiguration implements WorldConfiguration {
 
 // ===========  World Objects ===========
 public abstract class WorldObject {
-    protected PVector position;
+    protected PVector relativePosition;
 
-    public WorldObject(PVector position) {
-        this.position = position;
+    public WorldObject(PVector relativePosition) {
+        this.relativePosition = relativePosition;
     }
 
-    public PVector getPosition() {
-        return this.position;
+    public PVector getRelativePosition() {
+        return this.relativePosition;
     }
 
     public abstract void draw();
@@ -175,8 +176,8 @@ public class Cloud extends WorldObject {
     public void draw() {
         for (int i = 0; i < this.sphereOffsets.length; i++) {
             pushMatrix();
-            translate(this.position.x + this.sphereOffsets[i].x, this.position.y + this.
-            sphereOffsets[i].y, this.position.z + this.sphereOffsets[i].z);
+            translate(this.relativePosition.x + this.sphereOffsets[i].x, this.relativePosition.y + this.
+            sphereOffsets[i].y, this.relativePosition.z + this.sphereOffsets[i].z);
             noStroke();
             fill(this.colorScheme.getCloudColor());
             sphere(this.sphereRadiuses[i]);
@@ -194,8 +195,8 @@ public class Tree extends WorldObject {
     private float foliageRadius;
     private float foliageHeight;
 
-    public Tree(PVector position, float trunkHeight, float trunkRadius, float foliageRadius, float foliageHeight, ColorScheme colorScheme) {
-        super(position);
+    public Tree(PVector relativePosition, float trunkHeight, float trunkRadius, float foliageRadius, float foliageHeight, ColorScheme colorScheme) {
+        super(relativePosition);
         this.trunkHeight = trunkHeight;
         this.trunkRadius = trunkRadius;
         this.colorScheme = colorScheme;
@@ -207,7 +208,7 @@ public class Tree extends WorldObject {
     @Override
     public void draw() {
         pushMatrix();
-        translate(this.position.x, this.position.y, this.position.z);
+        translate(this.relativePosition.x, this.relativePosition.y, this.relativePosition.z);
 
         fill(this.colorScheme.getTreeTrunkColor());
         noStroke();
@@ -227,32 +228,94 @@ public class World {
     private ColorScheme colorScheme;
     private ArrayList<WorldObject> objects;
     private float[][] terrain;
+    private float resolution;
     private float scale;
     private float terrainSize;
     private int gridSize;
+    private PVector position;
 
-    public World(int gridSize, float resolution, float scale, WorldConfiguration worldConfiguration, ColorScheme colorScheme) {
+    public World(PVector position, int gridSize, float resolution, float scale, WorldConfiguration worldConfiguration, ColorScheme colorScheme) {
+        this.position = position;
+
         this.gridSize = gridSize;
         this.terrain = new float[gridSize][gridSize];
+        this.resolution = resolution;
         this.scale = scale;
         this.colorScheme = colorScheme;
         this.worldConfiguration = worldConfiguration;
         this.terrainSize = gridSize * scale;
+        this.objects = new ArrayList<>();
+    }
 
+    public void setup() {
+        generateWorld();
+    }
+
+    private void generateWorld() {
+        generateTerrain();
+        //generateClouds();
+    }
+
+    private void generateTerrain() {
         float zoff = 0;
         for (int z = 0; z < gridSize; z++) { 
             float xoff = 0;
             for (int x = 0; x < gridSize; x++) {
-                this.terrain[z][x] = map(noise(xoff, zoff), 0, 1, 0, 1000);  
+                this.terrain[z][x] = map(noise(xoff + this.position.x, zoff + this.position.z), 0, 1, 0, 1000);  
                 
-                xoff += resolution;
+                xoff += this.resolution;
             }
-            zoff += resolution;
+            zoff += this.resolution;
         }
-
-
-        this.objects = new ArrayList<>();
     }
+
+    private void pruneObjects() {
+        for (int i = 0; i < this.objects.size(); i++) {
+            WorldObject obj = this.objects.get(i);
+            PVector pos = obj.getRelativePosition();
+            if (pos.x < this.position.x - this.terrainSize / 2 || pos.x > this.position.x + this.terrainSize / 2 ||
+                pos.z < this.position.z - this.terrainSize / 2 || pos.z > this.position.z + this.terrainSize / 2) {
+                this.objects.remove(i);
+                i--;
+            }
+        }
+    }
+
+    private void generateClouds() {
+        float cloudThreshold = 0.65;  
+        float densityScale = 0.001;
+
+
+
+        for (int z = 0; z < this.terrain.length; z += 100) {  
+            for (int x = 0; x < this.terrain[z].length; x += 100) {
+                float noiseValue = noise(x * densityScale, z * densityScale);
+                
+                if (noiseValue > cloudThreshold) {  
+                    float adjustedX = x * scale - terrainSize / 2;
+                    float adjustedZ = z * scale - terrainSize / 2;
+
+                    this.addObject(new Cloud(
+                        new PVector(adjustedX, random(-1500, -1200), adjustedZ),  
+                        20,  // Number of spheres in the cloud
+                        300, // Cloud width
+                        150, // Cloud height
+                        300, // Cloud length
+                        world.getColorScheme()
+                    ));
+                }
+            }
+        }
+    }
+
+    public void move(PVector positionChange) {
+        this.position.add(positionChange); // Use add() to update the position
+
+        if (positionChange.x != 0 || positionChange.z != 0) { // Fix the typo here
+            generateWorld();
+        }
+    }
+
 
     public void addObject(WorldObject obj) {
         this.objects.add(obj);
@@ -334,7 +397,6 @@ public class World {
 void populateWithTrees(World world) {
     float treeThreshold = 0.5;
     float densityScale = 0.008;
-    float acceptanceChance = 0.04;
     WorldConfiguration worldConfiguration = world.getWorldConfiguration();
     float scale = world.getScale();
     float terrainSize = world.getTerrainSize(); 
@@ -346,10 +408,6 @@ void populateWithTrees(World world) {
             if (noiseValue > treeThreshold) {
                 float height = world.terrain[z][x];  
                 if (height > worldConfiguration.getRockLevelStart() || height < worldConfiguration.getWaterLevel()) {
-                    continue;
-                }
-
-                if (random(1) < 1 - acceptanceChance) {
                     continue;
                 }
 
@@ -370,43 +428,84 @@ void populateWithTrees(World world) {
     }
 }
 
-void populateWithClouds(World world) {
-    float cloudThreshold = 0.65;  
-    float densityScale = 0.001;
-    float acceptanceChance = 0.5;
-    WorldConfiguration worldConfiguration = world.getWorldConfiguration();
-    float scale = world.getScale();
-    float terrainSize = world.getTerrainSize(); 
+// ===========  Misc functions ===========
+void drawFPS() {
+    // Switch to 2D overlay mode
+    hint(DISABLE_DEPTH_TEST); // Disable depth test for overlay text
+    camera(); // Reset the camera to default for 2D drawing
+    ortho(); // Switch to orthographic projection for 2D
 
-    for (int z = 0; z < world.terrain.length; z += 100) {  
-        for (int x = 0; x < world.terrain[z].length; x += 100) {
-            float noiseValue = noise(x * densityScale, z * densityScale);
-            
-            if (noiseValue > cloudThreshold) {  
+    // Draw FPS counter
+    fill(255); // Set text color to white
+    textSize(16);
+    text("FPS: " + int(frameRate), 10, 20); // Display FPS at the top-left corner
 
-                if (random(1) < 1 - acceptanceChance) {
-                    continue;
-                }
+    // Restore 3D settings
+    hint(ENABLE_DEPTH_TEST); // Re-enable depth test for 3D rendering
+    perspective(); // Restore perspective projection
+    apply3DCamera(); // Reapply custom 3D camera settings
+}
 
-                float adjustedX = x * scale - terrainSize / 2;
-                float adjustedZ = z * scale - terrainSize / 2;
+void apply3DCamera() {
+    float d = 2600;
+    camera(-d, -d, d, 
+           0, 0, 0,   
+           0, 1, 0);
+}
 
-                world.addObject(new Cloud(
-                    new PVector(adjustedX, random(-1500, -1200), adjustedZ),  
-                    20,  // Number of spheres in the cloud
-                    300, // Cloud width
-                    150, // Cloud height
-                    300, // Cloud length
-                    world.getColorScheme()
-                ));
-            }
-        }
-    }
+void moveWorldFromMouse(World world, float sensitivity) {
+    // Calculate distance and angle from the mouse to the center of the screen
+    float centerX = width / 2;
+    float centerY = height / 2;
+    float dx = mouseX - centerX;
+    float dy = mouseY - centerY;
+
+    // Calculate distance and normalize to control speed
+    float distance = dist(centerX, centerY, mouseX, mouseY);
+    float maxDistance = dist(0, 0, centerX, centerY); // Maximum possible distance
+    float speed = map(distance, 0, maxDistance, 0, sensitivity); // Use sensitivity as the maximum speed
+
+    // Calculate direction
+    float angle = atan2(dy, dx);
+
+    // Adjust for the 45-degree rotation by rotating the angle by -45 degrees
+    float adjustedAngle = angle + PI / 4;
+    float moveX = cos(adjustedAngle) * speed;
+    float moveZ = sin(adjustedAngle) * speed;
+
+    // Move the world based on the adjusted direction and speed
+    world.move(new PVector(moveX, 0, moveZ));
 }
 
 
 // ===========  Pre-setup ===========
 World world;
+
+/*
+    The following 3 variables determine what the world looks like
+    These values work well together. These values were found from a lot of trial and error
+    There is no reasoning behind them. I just found them to look good
+*/
+final float REALISTIC_RESOLUTION = 0.0035f;
+final float REALISTIC_SCALE = 1.5f;
+final int PLEASANT_WORLD_VISUAL_SIZE = 2500;
+
+/* 
+    The following variable will scale the size of each rendered quad of the plane in your world.
+    Bigger quads = better performance = more FPS = worse quality
+    If the world looks too ugly, try decreasing this value
+    If your FPS is too low, try increasing this value
+    Long story short, just like with everything in life, find a balance. Or a better programmer.
+*/
+final int HOW_BAD_IS_YOUR_COMPUTER = 10;
+
+// One time calculation
+final int GRID_SIZE = PLEASANT_WORLD_VISUAL_SIZE / HOW_BAD_IS_YOUR_COMPUTER;
+final float RESOLUTION = REALISTIC_RESOLUTION * HOW_BAD_IS_YOUR_COMPUTER;
+final float SCALE = REALISTIC_SCALE * HOW_BAD_IS_YOUR_COMPUTER;
+
+// Movement constants
+final float MOVEMENT_SENSITIVITY = 0.15f;
 
 
 // ===========  Processing Functions ===========
@@ -414,16 +513,12 @@ void setup() {
     fullScreen(P3D);
     //noiseSeed(42);
 
-    float d = 2600;
-    camera(-d, -d, d, 
-        0, 0, 0,   
-        0, 1, 0);
+    apply3DCamera();
 
     ColorScheme defaultColorScheme = new DefaultColorScheme();
 
-    world = new World(2500, 0.0035f, 1.5f, new DefaultWorldConfiguration(), defaultColorScheme);
-    populateWithTrees(world);
-    populateWithClouds(world);
+    world = new World(new PVector(0, 0, 0), GRID_SIZE, RESOLUTION, SCALE, new DefaultWorldConfiguration(), defaultColorScheme);
+    world.setup();
 }
 
 
@@ -433,9 +528,13 @@ void draw() {
     lights();
     directionalLight(255, 255, 255, 0, -1, -1);
 
+    moveWorldFromMouse(world, MOVEMENT_SENSITIVITY);
     world.drawAll();
 
     if (frameCount == 1) {
         save("output/output.tif");
     }
+
+    drawFPS();
 }
+
