@@ -232,11 +232,10 @@ public class World {
     private float scale;
     private float terrainSize;
     private int gridSize;
-    private float positionX, positionZ;
+    private PVector position;
 
-    public World(float positionX, float positionZ, int gridSize, float resolution, float scale, WorldConfiguration worldConfiguration, ColorScheme colorScheme) {
-        this.positionX = positionX;
-        this.positionZ = positionZ;
+    public World(PVector position, int gridSize, float resolution, float scale, WorldConfiguration worldConfiguration, ColorScheme colorScheme) {
+        this.position = position;
 
         this.gridSize = gridSize;
         this.terrain = new float[gridSize][gridSize];
@@ -254,7 +253,7 @@ public class World {
 
     private void generateWorld() {
         generateTerrain();
-        generateClouds();
+        //generateClouds();
     }
 
     private void generateTerrain() {
@@ -262,7 +261,7 @@ public class World {
         for (int z = 0; z < gridSize; z++) { 
             float xoff = 0;
             for (int x = 0; x < gridSize; x++) {
-                this.terrain[z][x] = map(noise(xoff + this.positionX, zoff + this.positionZ), 0, 1, 0, 1000);  
+                this.terrain[z][x] = map(noise(xoff + this.position.x, zoff + this.position.z), 0, 1, 0, 1000);  
                 
                 xoff += this.resolution;
             }
@@ -274,8 +273,8 @@ public class World {
         for (int i = 0; i < this.objects.size(); i++) {
             WorldObject obj = this.objects.get(i);
             PVector pos = obj.getRelativePosition();
-            if (pos.x < this.positionX - this.terrainSize / 2 || pos.x > this.positionX + this.terrainSize / 2 ||
-                pos.z < this.positionZ - this.terrainSize / 2 || pos.z > this.positionZ + this.terrainSize / 2) {
+            if (pos.x < this.position.x - this.terrainSize / 2 || pos.x > this.position.x + this.terrainSize / 2 ||
+                pos.z < this.position.z - this.terrainSize / 2 || pos.z > this.position.z + this.terrainSize / 2) {
                 this.objects.remove(i);
                 i--;
             }
@@ -309,14 +308,14 @@ public class World {
         }
     }
 
-    public void move(float x, float z) {
-        this.positionX += x;
-        this.positionZ += z;
+    public void move(PVector positionChange) {
+        this.position.add(positionChange); // Use add() to update the position
 
-        if (x != 0 || z != 0) {
+        if (positionChange.x != 0 || positionChange.z != 0) { // Fix the typo here
             generateWorld();
         }
     }
+
 
     public void addObject(WorldObject obj) {
         this.objects.add(obj);
@@ -429,35 +428,6 @@ void populateWithTrees(World world) {
     }
 }
 
-void populateWithClouds(World world) {
-    float cloudThreshold = 0.65;  
-    float densityScale = 0.001;
-    WorldConfiguration worldConfiguration = world.getWorldConfiguration();
-    float scale = world.getScale();
-    float terrainSize = world.getTerrainSize(); 
-
-    for (int z = 0; z < world.terrain.length; z += 100) {  
-        for (int x = 0; x < world.terrain[z].length; x += 100) {
-            float noiseValue = noise(x * densityScale, z * densityScale);
-            
-            if (noiseValue > cloudThreshold) {  
-                float adjustedX = x * scale - terrainSize / 2;
-                float adjustedZ = z * scale - terrainSize / 2;
-
-                world.addObject(new Cloud(
-                    new PVector(adjustedX, random(-1500, -1200), adjustedZ),  
-                    20,  // Number of spheres in the cloud
-                    300, // Cloud width
-                    150, // Cloud height
-                    300, // Cloud length
-                    world.getColorScheme()
-                ));
-            }
-        }
-    }
-}
-
-
 // ===========  Misc functions ===========
 void drawFPS() {
     // Switch to 2D overlay mode
@@ -497,11 +467,14 @@ void moveWorldFromMouse(World world, float sensitivity) {
 
     // Calculate direction
     float angle = atan2(dy, dx);
-    float moveX = cos(angle) * speed;
-    float moveZ = sin(angle) * speed;
 
-    // Move the world based on calculated direction and speed
-    world.move(moveX, moveZ);
+    // Adjust for the 45-degree rotation by rotating the angle by -45 degrees
+    float adjustedAngle = angle + PI / 4;
+    float moveX = cos(adjustedAngle) * speed;
+    float moveZ = sin(adjustedAngle) * speed;
+
+    // Move the world based on the adjusted direction and speed
+    world.move(new PVector(moveX, 0, moveZ));
 }
 
 
@@ -544,10 +517,8 @@ void setup() {
 
     ColorScheme defaultColorScheme = new DefaultColorScheme();
 
-    world = new World(0f, 0f, GRID_SIZE, RESOLUTION, SCALE, new DefaultWorldConfiguration(), defaultColorScheme);
+    world = new World(new PVector(0, 0, 0), GRID_SIZE, RESOLUTION, SCALE, new DefaultWorldConfiguration(), defaultColorScheme);
     world.setup();
-    //populateWithTrees(world);
-    populateWithClouds(world);
 }
 
 
