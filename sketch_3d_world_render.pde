@@ -2,6 +2,8 @@
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.List;
+import java.util.Iterator;
 
 
 // ===========  Misc functions ===========
@@ -19,15 +21,18 @@ void cylinder(float r, float h) {
 
 void cone(float r, float h) {
     beginShape(TRIANGLE_FAN);
+    // Tip of the cone at the origin
     vertex(0, -h, 0);
     for (int i = 0; i <= 360; i += 5) {
         float rad = radians(i);
         float x = cos(rad) * r;
-        float y = sin(rad) * r;
-        vertex(x, 0, y);
+        float z = sin(rad) * r;
+        vertex(x, 0, z);
     }
     endShape();
 }
+
+
 
 // ===========  World config ===========
 public interface ColorScheme {
@@ -41,6 +46,8 @@ public interface ColorScheme {
     color getCloudColor();
     color getRocketColor();
     color getRocketHeadColor();
+    color getRocketFlameMinColor();
+    color getRocketFlameMaxColor();
 }
 
 
@@ -99,6 +106,16 @@ public class DefaultColorScheme implements ColorScheme {
     @Override
     public color getRocketHeadColor() {
         return color(128, 128, 128);
+    }
+
+    @Override
+    public color getRocketFlameMinColor() {
+        return color(255, 165, 0);
+    }
+
+    @Override
+    public color getRocketFlameMaxColor() {
+        return color(255, 0, 0);
     }
 }
 
@@ -245,11 +262,52 @@ public class Tree extends WorldObject {
 }
 
 
+public class FlameParticle {
+    PVector position;   // Position in rocket's local coordinates
+    PVector velocity;   // Velocity in rocket's local coordinates
+    int flameColor;
+    float lifespan;     // In seconds
+
+    public FlameParticle(PVector position, PVector velocity, int flameColor, float lifespan) {
+        this.position = position.copy();
+        this.velocity = velocity.copy();
+        this.flameColor = flameColor;
+        this.lifespan = lifespan;
+    }
+
+    public void update(float deltaTime) {
+        // Update position based on velocity and time elapsed
+        position.add(PVector.mult(velocity, deltaTime));
+        // Decrease lifespan
+        lifespan -= deltaTime;
+    }
+
+    public void draw() {
+        pushMatrix();
+        translate(position.x, position.y, position.z);
+        float alpha = map(lifespan, 0, 0.5f, 0, 255);
+        fill(red(flameColor), green(flameColor), blue(flameColor), alpha);
+        noStroke();
+        float size = map(lifespan, 0, 0.5f, 1, 15);
+        sphere(size); // Use sphere for simplicity
+        popMatrix();
+    }
+
+    public boolean isExpired() {
+        return lifespan <= 0;
+    }
+}
+
+
+
+
 public class Rocket extends WorldObject {
+    // Existing properties
     private float rocketBodyHeight;
     private float rocketHeadHeight;
     private float rocketRadius;
     private ColorScheme colorScheme;
+    private List<FlameParticle> flameParticles;
 
     public Rocket(PVector relativePosition, float rocketBodyHeight, float rocketHeadHeight, float rocketRadius, ColorScheme colorScheme) {
         super(relativePosition);
@@ -257,23 +315,245 @@ public class Rocket extends WorldObject {
         this.rocketHeadHeight = rocketHeadHeight;
         this.rocketRadius = rocketRadius;
         this.colorScheme = colorScheme;
+        this.flameParticles = new ArrayList<>();
+    }
+
+    // Update method to handle particle logic
+    public void update(float deltaTime) {
+        // Update existing particles
+        Iterator<FlameParticle> iterator = flameParticles.iterator();
+        while (iterator.hasNext()) {
+            FlameParticle particle = iterator.next();
+            particle.update(deltaTime);
+            if (particle.isExpired()) {
+                iterator.remove();
+            }
+        }
+
+        // Calculate distance from mouse to center
+        float centerX = width / 2;
+        float centerY = height / 2;
+        float distance = dist(centerX, centerY, mouseX, mouseY);
+        float maxDistance = dist(0, 0, centerX, centerY); // Maximum possible distance
+
+        // Map distance to speed range (50 to 500)
+        float speed = map(distance, 0, maxDistance, 50, 500);
+
+        // Spawn new particles with calculated speed
+        spawnFlameParticles(speed);
+    }
+
+
+    private void spawnFlameParticles(float speed) {
+        int particlesPerFrame = 5; // Adjust as needed
+        for (int i = 0; i < particlesPerFrame; i++) {
+            // Random color between min and max flame colors
+            int flameColor = getRandomColor(
+                colorScheme.getRocketFlameMinColor(),
+                colorScheme.getRocketFlameMaxColor()
+            );
+
+            // Get the exhaust position in world coordinates
+            PVector exhaustPositionWorld = getExhaustWorldPosition();
+
+            // Get the velocity in world coordinates, applying the speed
+            PVector velocityWorld = getRandomVelocityWorld(speed);
+
+            // Lifespan in seconds
+            float lifespan = 1f;
+
+            // Create and add the flame particle
+            FlameParticle particle = new FlameParticle(exhaustPositionWorld, velocityWorld, flameColor, lifespan);
+            flameParticles.add(particle);
+        }
+    }
+
+    private PVector getRandomVelocityWorld(float speed) {
+        // Generate a random spread angle for lateral movement
+        float spreadAngle = radians(15); // Adjust as needed
+
+        // Random angles within the spread
+        float angleX = random(-spreadAngle, spreadAngle);
+        float angleY = random(-spreadAngle, spreadAngle);
+
+        // Direction vector in local coordinates pointing away from the rocket's rear
+        PVector localVelocity = new PVector(
+            tan(angleX),  // Small lateral spread in X
+            tan(angleY),  // Small lateral spread in Y
+            1.0f          // Positive Z direction
+        );
+
+        localVelocity.normalize();
+        localVelocity.mult(speed); // Use the calculated speed
+
+        // Transform the velocity to world coordinates
+        PVector worldVelocity = localToWorldDirection(localVelocity);
+
+        return worldVelocity;
+    }
+
+    private PVector localToWorldDirection(PVector localDirection) {
+        // Create a rotation matrix (exclude translations for direction vectors)
+        PMatrix3D rotationMatrix = new PMatrix3D();
+        rotationMatrix.rotateX(HALF_PI);
+
+        // Use the same adjusted angle
+        float centerX = width / 2;
+        float centerY = height / 2;
+        float dx = mouseX - centerX;
+        float dy = mouseY - centerY;
+        float angle = atan2(dy, dx);
+        float adjustedAngle = angle + PI / 4;
+        rotationMatrix.rotateZ(adjustedAngle);
+
+        // Transform the local direction
+        PVector worldDirection = localDirection.get();
+        rotationMatrix.mult(worldDirection, worldDirection);
+
+        return worldDirection;
+    }
+
+
+
+    private int getRandomColor(int minColor, int maxColor) {
+        float t = random(0, 1);
+        int r = (int) lerp(red(minColor), red(maxColor), t);
+        int g = (int) lerp(green(minColor), green(maxColor), t);
+        int b = (int) lerp(blue(minColor), blue(maxColor), t);
+        return color(r, g, b);
+    }
+
+    private PVector getExhaustWorldPosition() {
+    // The exhaust is at the rear of the rocket along the positive Z-axis in local coordinates
+        PVector localExhaustPosition = new PVector(0, 0, -this.rocketBodyHeight * 5.2);
+
+        // Apply the rocket's transformations to get the world position
+        PVector worldExhaustPosition = localToWorldPosition(localExhaustPosition);
+
+        return worldExhaustPosition;
+    }
+
+    private PVector localToWorldPosition(PVector localPosition) {
+        // Create a new matrix to accumulate transformations
+        PMatrix3D transformationMatrix = new PMatrix3D();
+
+        // Apply transformations in the same order as in draw()
+        transformationMatrix.translate(this.relativePosition.x, this.relativePosition.y, this.relativePosition.z);
+        transformationMatrix.rotateX(HALF_PI);
+
+        // Calculate the adjusted angle
+        float centerX = width / 2;
+        float centerY = height / 2;
+        float dx = mouseX - centerX;
+        float dy = mouseY - centerY;
+        float angle = atan2(dy, dx);
+        float adjustedAngle = angle + PI / 4;
+        transformationMatrix.rotateZ(adjustedAngle);
+
+        // Center the rocket body along the new Z-axis
+        transformationMatrix.translate(0, 0, 0);
+
+        // Transform the local position
+        PVector worldPosition = localPosition.get();
+        transformationMatrix.mult(worldPosition, worldPosition);
+
+        return worldPosition;
+    }
+
+
+    private PMatrix3D getTransformationMatrix() {
+        PMatrix3D matrix = new PMatrix3D();
+
+        // Apply transformations in the same order as in draw()
+        matrix.translate(this.relativePosition.x, this.relativePosition.y, this.relativePosition.z);
+        matrix.rotateX(HALF_PI);
+
+        // Calculate the adjusted angle
+        float centerX = width / 2;
+        float centerY = height / 2;
+        float dx = mouseX - centerX;
+        float dy = mouseY - centerY;
+        float angle = atan2(dy, dx);
+        float adjustedAngle = angle + PI / 4;
+        matrix.rotateZ(adjustedAngle);
+
+        // Center the rocket body along the new Z-axis
+        matrix.translate(0, 0, -this.rocketBodyHeight / 2);
+
+        return matrix;
+    }
+
+
+    private PVector getRandomVelocity() {
+        // Generate a random direction pointing away from the rocket (along negative Z)
+         float spreadAngle = radians(15); // Adjust as needed for wider or narrower flame
+
+        // Random angle within the spread
+        float angleXY = random(-spreadAngle, spreadAngle);
+
+        // Random speed
+        float speed = random(100, 200); // Adjust as needed
+
+        // Direction vector pointing away from the rocket's rear along positive Z
+        PVector dir = new PVector(
+            sin(angleXY),            // Small lateral spread in X
+            sin(angleXY),            // Small lateral spread in Y
+            1.0f                     // Positive Z direction
+        );
+
+        dir.normalize();
+        dir.mult(speed);
+
+        return dir;
+    }
+
+    private PMatrix3D getRotationMatrix() {
+        PMatrix3D matrix = new PMatrix3D();
+        matrix.rotateX(HALF_PI);
+
+        float centerX = width / 2;
+        float centerY = height / 2;
+        float dx = mouseX - centerX;
+        float dy = mouseY - centerY;
+        float angle = atan2(dy, dx);
+        float adjustedAngle = angle + PI / 4;
+        matrix.rotateZ(adjustedAngle);
+
+        return matrix;
     }
 
     @Override
     public void draw() {
+        // Draw the rocket
         pushMatrix();
+        // Apply transformations
         translate(this.relativePosition.x, this.relativePosition.y, this.relativePosition.z);
+        rotateX(HALF_PI);
+        float centerX = width / 2;
+        float centerY = height / 2;
+        float dx = mouseX - centerX;
+        float dy = mouseY - centerY;
+        float angle = atan2(dy, dx);
+        float adjustedAngle = angle - PI / 4;
+        rotateZ(adjustedAngle);
+        translate(0, 0, -this.rocketBodyHeight / 2);
 
+        // Draw the rocket body and head
         fill(this.colorScheme.getRocketColor());
         noStroke();
         cylinder(this.rocketRadius, -this.rocketBodyHeight);
-        
-        translate(0, -this.rocketBodyHeight, 0);
         fill(this.colorScheme.getRocketHeadColor());
-        cone(this.rocketRadius, this.rocketHeadHeight);
-
+        cone(this.rocketRadius, -this.rocketHeadHeight);
+        for (FlameParticle particle : flameParticles) {
+            particle.draw();
+        }
         popMatrix();
+
+        // Draw flame particles in world coordinates
+        
     }
+
+
 }
 
 
@@ -571,6 +851,7 @@ void moveWorldFromMouse(World world, float sensitivity) {
 // ===========  Pre-setup ===========
 World world;
 Rocket rocket;
+float lastFrameTime = 0;
 
 /*
     The following 3 variables determine what the world looks like
@@ -611,18 +892,24 @@ void setup() {
     world = new World(new PVector(0, 0, 0), GRID_SIZE, RESOLUTION, SCALE, new DefaultWorldConfiguration(), defaultColorScheme);
     world.setup();
 
-    rocket = new Rocket(new PVector(0, -1000, 0), 200, 50, 25, defaultColorScheme);
+    rocket = new Rocket(new PVector(0, -world.getWorldConfiguration().getWorldHeight(), 0), 200, 50, 25, defaultColorScheme);
     world.addObject(rocket);
 }
 
 
 void draw() {
+    float currentTime = millis() / 1000.0; // Convert to seconds
+    float deltaTime = currentTime - lastFrameTime;
+    lastFrameTime = currentTime;
+
     background(0, 0, 0);
 
     lights();
     directionalLight(255, 255, 255, 0, -1, -1);
 
     moveWorldFromMouse(world, MOVEMENT_SENSITIVITY);
+    rocket.update(deltaTime);
+    rocket.draw();
     world.drawAll();
 
     if (frameCount == 1) {
